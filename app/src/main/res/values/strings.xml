@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">nfurgonapp</string>
+    <string name="inicia_sesi_n_con_tel_fono">Inicia sesión con teléfono</string>
+    <string name="inicia_sesi_n_con_google">Inicia sesión con google</string>
+    <string name="continue_text">Continuar</string>
+    <string name="register_text">Primero crearemos tu cuenta</string>
+    <string name="first_name">nombre</string>
+    <string name="last_name">apellido</string>
+    <string name="phone_number">numero de telefono</string>
+    <string name="title_activity_home">HomeActivity</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="menu_exit">sign out</string>
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+    <string name="title_activity_maps">MapsActivity</string>
+    <string name="permission_require">Permission Location required</string>
+    <string name="driver_not_found">Conductor no encontrado</string>
+    <string name="key_not_found">key driver not found</string>
+    <string name="welocome">Buenos dias!</string>
+    <string name="Choose_a_saved_place">Eligue un lugar que hayas guardado</string>
+    <string name="ciudad_no_encontrada">Ciudad no encontrada.</string>
+    <string name="title_activity_request_driver">RequestDriverActivity</string>
+</resources>
