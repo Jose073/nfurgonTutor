@@ -26,4 +26,9 @@
     <string name="Choose_a_saved_place">Eligue un lugar que hayas guardado</string>
     <string name="ciudad_no_encontrada">Ciudad no encontrada.</string>
     <string name="title_activity_request_driver">RequestDriverActivity</string>
+    <string name="Confirm">Confirmar traslado</string>
+    <string name="Refuse">Rechasar traslado</string>
+    <string name="finding_your_ride">Buscando el conductor</string>
+    <string name="token_not_found">Token not found</string>
+    <string name="send_request_driver_failed">Request driver failed</string>
 </resources>

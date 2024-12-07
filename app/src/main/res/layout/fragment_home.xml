@@ -10,9 +10,8 @@
     app:umanoPanelHeight="220dp"
     app:umanoShadowHeight="20dp">
 
-    <fragment
+    <org.osmdroid.views.MapView
         android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         />
@@ -86,7 +85,6 @@
             android:text="@string/Choose_a_saved_place"
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp"/>
-
 
 
     </LinearLayout>

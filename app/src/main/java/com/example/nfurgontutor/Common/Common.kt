@@ -1,5 +1,7 @@
 package com.example.nfurgontutor.Common
 
+import android.animation.ValueAnimator
+import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -23,10 +25,12 @@ import kotlin.math.atan
 
 
 object Common {
+    val PICKUP_LOCATION: String="PickupLocation"
+    val REQUEST_DRIVER_TITLE: String="RequestDriver"
     val driversSubscribe: MutableMap<String, AnimationModel> = HashMap<String,AnimationModel>()
     val markerList: MutableMap<String,Marker> = HashMap<String,Marker>()
     val DRIVER_INFO_REFERECE: String = "DriverINFO"
-    val driverFound: MutableSet<DriverGeoModel> = HashSet<DriverGeoModel>()
+    val driverFound: MutableMap<String,DriverGeoModel> = HashMap<String,DriverGeoModel>()
     val DRIVER_LOCATION_REFERENCE: String = "DriversLOCATION"
     val TOKEN_REFERENCE: String = "Token"
     var currentTutor: TutoModel?=null
@@ -68,7 +72,7 @@ object Common {
     }
 
     fun buildWelcomeMessage(): String{
-        return StringBuilder("Bienvenido,")
+        return StringBuilder("Bienvenido")
             .append(currentTutor!!.firstName)
             .append(" ")
             .append(currentTutor!!.lastName)
@@ -156,5 +160,15 @@ object Common {
     fun formatAddress(startAddress: String): CharSequence? {
         val firstIndexComma = startAddress.indexOf(",")
         return  startAddress.substring(0,firstIndexComma)
+    }
+
+    fun valueAnimate(duration: Int,listener: AnimatorUpdateListener?):ValueAnimator{
+        val va = ValueAnimator.ofFloat(0f,100f)
+        va.duration = duration.toLong()
+        va.addUpdateListener(listener)
+        va.repeatCount = ValueAnimator.INFINITE
+        va.repeatMode = ValueAnimator.RESTART
+        va.start()
+        return va
     }
 }

@@ -9,4 +9,5 @@
     <color name="white">#FFFFFFFF</color>
     <color name="yelow">#FFC100</color>
     <color name="orange">#F4420A</color>
+    <color name="map_darker">#66333333</color>
 </resources>

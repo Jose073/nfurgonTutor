@@ -3,18 +3,24 @@ package com.example.nfurgontutor
 import android.Manifest
 import android.animation.ValueAnimator
 import android.content.pm.PackageManager
+import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.view.animation.LinearInterpolator
+import android.widget.Button
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.nfurgontutor.Common.Common
 import com.example.nfurgontutor.Model.EventBus.SelectedPlaceEvent
 import com.example.nfurgontutor.Remote.IGoogleAPI
 import com.example.nfurgontutor.Remote.RetrofitClient
+import com.example.nfurgontutor.Utils.UserUtils
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -23,6 +29,9 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.example.nfurgontutor.databinding.ActivityRequestDriverBinding
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Circle
+import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -39,8 +48,20 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import org.json.JSONObject
+import java.lang.StringBuilder
 
 class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
+
+    //animacion giratoria
+    var animator: ValueAnimator?=null
+    private val DESIRED_NUM_OF_SPINS = 5
+    private val DESIRE_SECONDS_PER_ONE_FULL_360_SPIN = 40
+
+    //Efectos
+    var lastUserCircle: Circle?=null
+    val duration=1000
+    var lastPulseAnimator: ValueAnimator?=null
+
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityRequestDriverBinding
@@ -50,7 +71,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mapFragment: SupportMapFragment;
 
-    //routes
+    //Rutas
     private val compositeDisposable = CompositeDisposable()
     private lateinit var iGoogleAPI: IGoogleAPI
     private var blackPolyline: Polyline? = null
@@ -61,11 +82,27 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     private var originMarker: Marker? = null
     private var destinationMarker: Marker? = null
 
+    val btnconfirm = findViewById<Button>(R.id.btn_confirm)
+    val btnrefuse = findViewById<Button>(R.id.btn_refuse)
+    val fillmap = findViewById<View>(R.id.fill_maps)
+    //puede que alla un problema  con findingYourRide porque es un card
+    val findingYourRide = findViewById<View>(R.id.finding_your_ride_layout)
+    val mainlayout = findViewById<RelativeLayout>(R.id.main_layout)
+
+
+
+
+
+
+
+
+
 
     override fun onStart() {
         if (!EventBus.getDefault().isRegistered(this))
             EventBus.getDefault().register(this)
         super.onStart()
+
     }
 
     override fun onStop() {
@@ -97,6 +134,135 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun initial() {
         iGoogleAPI = RetrofitClient.instance!!.create(IGoogleAPI::class.java)
+
+
+        //Event
+        btnconfirm.setOnClickListener {
+            btnrefuse.visibility = View.GONE
+
+            if (mMap == null) return@setOnClickListener
+            if (selectedPlaceEvent == null) return@setOnClickListener
+
+            //clear map
+            mMap.clear()
+
+            //tilt
+            val cameraPos = CameraPosition.builder().target(selectedPlaceEvent!!.origin)
+                .tilt(45f)
+                .zoom(16f)
+                .build()
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPos))
+
+            //start Animation
+            addMarkerWithPulseAnimation()
+        }
+    }
+
+    private fun addMarkerWithPulseAnimation() {
+        btnconfirm.visibility = View.GONE
+        fillmap.visibility = View.VISIBLE
+        findingYourRide.visibility = View.VISIBLE
+
+        originMarker = mMap.addMarker(MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker())
+            .position(selectedPlaceEvent!!.origin))
+
+        addPulsatingEffect(selectedPlaceEvent!!.origin)
+
+    }
+
+    private fun addPulsatingEffect(origin: LatLng) {
+        if (lastPulseAnimator != null) lastPulseAnimator!!.cancel()
+        if (lastUserCircle != null) lastUserCircle!!.center = origin
+        lastPulseAnimator = Common.valueAnimate(duration,object :ValueAnimator.AnimatorUpdateListener{
+            override fun onAnimationUpdate(p0: ValueAnimator) {
+                if (lastUserCircle != null) lastUserCircle!!.radius = p0!!.animatedValue.toString().toDouble()
+                else
+                {
+                    lastUserCircle = mMap.addCircle(CircleOptions()
+                        .center(origin)
+                        .radius(p0!!.animatedValue.toString().toDouble())
+                        .strokeColor(android.graphics.Color.WHITE)
+                        .fillColor(ContextCompat.getColor(this@RequestDriverActivity,R.color.map_darker)))
+                }
+            }
+
+        })
+
+        //Star roting camera
+        startMapCameraSpinninAnimation(mMap.cameraPosition.target)
+
+
+    }
+
+    private fun startMapCameraSpinninAnimation(target: LatLng) {
+        if (animator != null) animator!!.cancel()
+        animator = ValueAnimator.ofFloat(0f,(DESIRED_NUM_OF_SPINS*360).toFloat())
+        animator!!.duration = (DESIRED_NUM_OF_SPINS*DESIRE_SECONDS_PER_ONE_FULL_360_SPIN*1000).toLong()
+        animator!!.interpolator = LinearInterpolator()
+        animator!!.startDelay = (100)
+        animator!!.addUpdateListener { valueAnimator ->
+            val newBearingValue = valueAnimator.animatedValue as Float
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.builder()
+                .target(target)
+                .zoom(16f)
+                .tilt(45f)
+                .bearing(newBearingValue)
+                .build()
+            ))
+        }
+        animator!!.start()
+
+        findNearbyDriver(target)
+    }
+
+    private fun findNearbyDriver(target: LatLng) {
+
+
+        if (Common.driverFound.size > 0)
+        {
+            var min = 0f
+            var foundDriver = Common.driverFound[Common.driverFound.keys.iterator().next()]
+            val currentRiderLocation = Location("")
+            currentRiderLocation.latitude = target!!.latitude
+            currentRiderLocation.longitude = target!!.longitude
+
+            for (key in Common.driverFound.keys)
+            {
+                val driverLocation = Location("")
+                driverLocation.latitude = Common.driverFound[key]!!.geoLocation!!.latitude
+                driverLocation.longitude = Common.driverFound[key]!!.geoLocation!!.longitude
+
+                if (min == 0f)
+                {
+                    min = driverLocation.distanceTo(currentRiderLocation)
+                    foundDriver = Common.driverFound[key]
+                }
+                else if(driverLocation.distanceTo(currentRiderLocation) < min)
+                {
+                    min = driverLocation.distanceTo(currentRiderLocation)
+                    foundDriver = Common.driverFound[key]
+                }
+            }
+            //este dicta la info del conductor cuando lo encuentra
+//            Snackbar.make(mainlayout,StringBuilder("Conductor encontrado: ")
+//                .append(foundDriver!!.driverInfoModel!!.phoneNumber),
+//                       Snackbar.LENGTH_LONG).show()
+
+            UserUtils.sendRequestToDriver(this@RequestDriverActivity,
+                mainlayout,
+                foundDriver,
+                target)
+        }
+        else
+        {
+            Snackbar.make(mainlayout,getString(R.string.driver_not_found),
+                Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onDestroy() {
+        if (animator != null) animator!!.end()
+        super.onDestroy()
     }
 
     /**
@@ -110,6 +276,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -166,7 +333,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
             "driving",
             "less_driving",
             selectedPlaceEvent.originString, selectedPlaceEvent.destinationString,
-            getString(R.string.google_api_key2)
+            getString(R.string.google_api_key)
         )
         !!.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())

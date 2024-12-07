@@ -80,8 +80,7 @@ dependencies {
 
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
     implementation("io.reactivex.rxjava3:rxjava:3.1.9")
-    implementation("com.firebaseui:firebase-ui-auth:8.0.0")
-    implementation("androidx.core:core-splashscreen:1.0.0-beta02")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     //databaseUI
     implementation("com.firebaseui:firebase-ui-auth:7.2.0")
@@ -108,7 +107,7 @@ dependencies {
 
     //Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging:24.0.3")
-    implementation("com.google.firebase:firebase-messaging-directboot:20.2.0")
+
 
     //Geofire
     implementation("com.firebase:geofire-android:3.2.0")
@@ -129,4 +128,8 @@ dependencies {
 
     //Maps Utils
     implementation("com.google.maps.android:android-maps-utils-v3:2.2.6")
+
+    //osmdroid
+    implementation("org.osmdroid:osmdroid-android:6.1.14")
+
 }

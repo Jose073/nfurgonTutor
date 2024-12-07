@@ -84,6 +84,10 @@ import java.util.Locale
 
 class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener {
 
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    }
+
     private var _binding: FragmentHomeBinding? = null
 
     private lateinit var homeViewModel: HomeViewModel
@@ -156,15 +160,47 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         Common.setWelcomeMessage(txt_welcome)
     }
 
+    private fun hasLocationPermission(): Boolean {
+        return ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+    private fun requestLocationPermission() {
+        if (!hasLocationPermission()) {
+            ActivityCompat.requestPermissions(
+                requireActivity(),
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
     private fun init() {
-        Places.initialize(requireContext(),getString(R.string.google_api_key2))
+
+        Places.initialize(requireContext(),getString(R.string.google_api_key))
+        //exDireccionar rutas
         autocompleteSupportFragment = childFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
-        autocompleteSupportFragment.setPlaceFields(Arrays.asList(Place.Field.ID,
+        autocompleteSupportFragment.setPlaceFields(
+            listOf(Place.Field.ID,
             Place.Field.ADDRESS,
             Place.Field.LAT_LNG,
-            Place.Field.NAME))
-        autocompleteSupportFragment.setOnPlaceSelectedListener(object:PlaceSelectionListener{
-            override fun onPlaceSelected(p0: Place) {
+            Place.Field.NAME
+            )
+        )
+        autocompleteSupportFragment.setOnPlaceSelectedListener(object : PlaceSelectionListener {
+            override fun onPlaceSelected(place: Place) {
+                if (!hasLocationPermission()) {
+                    Snackbar.make(requireView(), getString(R.string.permission_require), Snackbar.LENGTH_LONG).show()
+                    return
+                }
                 if (ActivityCompat.checkSelfPermission(
                         requireContext(),
                         Manifest.permission.ACCESS_FINE_LOCATION
@@ -173,29 +209,23 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                         Manifest.permission.ACCESS_COARSE_LOCATION
                     ) != PackageManager.PERMISSION_GRANTED
                 ) {
-                    Snackbar.make(requireView(),getString(R.string.permission_require),Snackbar.LENGTH_LONG).show()
                     return
                 }
-                fusedLocationProviderClient!!
-                    .lastLocation.addOnSuccessListener { location ->
-                        val origin = LatLng(location.latitude,location.longitude)
-                        val destination = LatLng(p0.latLng!!.latitude,p0.latLng!!.longitude)
+                fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+                    val origin = LatLng(location.latitude, location.longitude)
+                    val destination = LatLng(place.latLng!!.latitude, place.latLng!!.longitude)
 
-                        startActivity(Intent(requireContext(),RequestDriverActivity::class.java))
-                        EventBus.getDefault().postSticky(SelectedPlaceEvent(origin,destination))
-
+                    startActivity(Intent(requireContext(), RequestDriverActivity::class.java))
+                    EventBus.getDefault().postSticky(SelectedPlaceEvent(origin, destination))
                 }
-
             }
-
-            override fun onError(p0: Status) {
-                Snackbar.make(requireView(),p0.statusMessage!!,Snackbar.LENGTH_LONG).show()
+            override fun onError(status: Status) {
+                Snackbar.make(requireView(), status.statusMessage ?: "Error desconocido", Snackbar.LENGTH_LONG).show()
             }
 
         })
 
         iGoogleAPI = RetrofitClient.instance!!.create(IGoogleAPI::class.java)
-
         iFirebaseDriverInfoListener = this
 
         locationRequest = LocationRequest.Builder(
@@ -207,22 +237,23 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
             setMinUpdateDistanceMeters(5f)  // Desplazamiento mínimo entre actualizaciones
         }.build()
 
+        // Callback de la ubicación Tutor?
         locationCallback = object : LocationCallback() {
-            override fun onLocationResult(p0: LocationResult) {
-                super.onLocationResult(p0)
+            override fun onLocationResult(locationResult: LocationResult) {
+                super.onLocationResult(locationResult)
 
                 val newPos = LatLng(
-                    p0.lastLocation!!.latitude,
-                    p0.lastLocation!!.longitude
+                    locationResult.lastLocation!!.latitude,
+                    locationResult.lastLocation!!.longitude
                 )
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newPos, 18f))
 
                 if (firstTime)
                 {
-                    previousLocation  = p0.lastLocation
-                    currentLocation = p0.lastLocation
+                    previousLocation  = locationResult.lastLocation
+                    currentLocation = locationResult.lastLocation
 
-                    setRestrictPlacesInCountry(p0!!.lastLocation)
+                    setRestrictPlacesInCountry(locationResult.lastLocation)
 
                     firstTime = false
 
@@ -230,41 +261,52 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 else
                 {
                     previousLocation = currentLocation
-                    currentLocation = p0.lastLocation
+                    currentLocation = locationResult.lastLocation
                 }
                 //se le agrego !!
-                if (previousLocation!!.distanceTo(currentLocation!!)/1000 <= LIMIT_RANGE)
-                    loadDriver();
+                if (previousLocation != null && currentLocation != null) {
+                    if (previousLocation!!.distanceTo(currentLocation!!) / 1000 <= LIMIT_RANGE) {
+                        loadDriver()
+                    }
+                }
             }
         }
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+
+        // Verificar permisos y solicitar actualizaciones de ubicación
+        if (hasLocationPermission()) {
             fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper())
+        } else {
+            requestLocationPermission()
         }
+    }
 
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permiso concedido, puedes iniciar las actualizaciones de ubicación
+                if (ActivityCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    return
+                }
+                fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper())
+            } else {
+                // Permiso denegado, muestra un mensaje al usuario
+                Snackbar.make(requireView(), "Se necesita permiso de ubicación para continuar", Snackbar.LENGTH_LONG).show()
+            }
         }
-        fusedLocationProviderClient.requestLocationUpdates(locationRequest,locationCallback, Looper.myLooper())
-
-        loadDriver();
     }
 
     private fun setRestrictPlacesInCountry(location: Location?) {
@@ -315,7 +357,9 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
 
                     geoQuery.addGeoQueryEventListener(object:GeoQueryEventListener{
                         override fun onKeyEntered(key: String?, location: GeoLocation?) {
-                            Common.driverFound.add(DriverGeoModel(key!!,location!!))
+                            //Common.driverFound.add(DriverGeoModel(key!!,location!!))
+                            if (!Common.driverFound.containsKey(key))
+                                Common.driverFound[key!!] = DriverGeoModel(key,location)
                         }
 
                         override fun onKeyExited(key: String?) {
@@ -389,12 +433,12 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     private fun addDriverMarker() {
         if (Common.driverFound.size > 0)
         {
-            Observable.fromIterable(Common.driverFound)
+            Observable.fromIterable(Common.driverFound.keys)
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { driverGeomodel:DriverGeoModel? ->
-                        findDriverByKey(driverGeomodel)
+                    { key:String? ->
+                        findDriverByKey(Common.driverFound[key!!])
                     },
                     {
                         t: Throwable? -> Snackbar.make(requireView(),t!!.message!!,Snackbar.LENGTH_SHORT).show()
@@ -416,6 +460,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                     if (snapshot.hasChildren())
                     {
                         driverGeomodel.driverInfoModel = (snapshot.getValue(DriverInfoModel::class.java))
+                        Common.driverFound[driverGeomodel.key!!]!!.driverInfoModel= (snapshot.getValue(DriverInfoModel::class.java))
                         iFirebaseDriverInfoListener.onDriverInfoLoadSuccess(driverGeomodel)
                     }
                     else
@@ -458,7 +503,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
 
                     mMap.setOnMyLocationButtonClickListener {
                         fusedLocationProviderClient.lastLocation
-                            .addOnFailureListener { e->
+                            .addOnFailureListener { e ->
                                 Snackbar.make(requireView(), e.message ?: "Error getting location", Snackbar.LENGTH_LONG).show()
                             }
                             .addOnSuccessListener { location ->
@@ -540,10 +585,12 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
 
         if (!TextUtils.isEmpty(cityName))
         {
+            //llamando "driverLocation/cityname/{lat+lng}"
             val driverLocation = FirebaseDatabase.getInstance()
                 .getReference(Common.DRIVER_LOCATION_REFERENCE)
                 .child(cityName)
                 .child(driverGeoModel!!.key!!)
+
             driverLocation.addValueEventListener(object: ValueEventListener{
                 override fun onCancelled(error: DatabaseError) {
                     Snackbar.make(requireView(),error.message,Snackbar.LENGTH_SHORT).show()
@@ -610,7 +657,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
             compositeDisposable.add(iGoogleAPI.getDirections("driving",
                 "less_driving",
                 from,to,
-                getString(R.string.google_api_key2))
+                getString(R.string.google_api_key))
                     !!.subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe { returnResult ->

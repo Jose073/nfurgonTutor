@@ -56,8 +56,7 @@ class HomeActivity : AppCompatActivity() {
          drawerLayout = findViewById(R.id.drawer_layout) as DrawerLayout
          navView = findViewById(R.id.nav_view) as NavigationView
          navController = findNavController(R.id.nav_host_fragment_content_home)
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
+
         appBarConfiguration = AppBarConfiguration(
             setOf(
                 R.id.nav_home
