@@ -186,6 +186,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     private fun init() {
 
         Places.initialize(requireContext(),getString(R.string.google_api_key))
+
         //exDireccionar rutas
         autocompleteSupportFragment = childFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
         autocompleteSupportFragment.setPlaceFields(
@@ -552,6 +553,15 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 }
             })
             .check() //aquii!!
+
+        val schoolLocation = LatLng(-36.21175,-71.60404)
+        val schoolName = "Milan"
+
+        mMap.addMarker(
+            MarkerOptions()
+                .position(schoolLocation)
+                .title(schoolName)
+        )
 
 
         //Enable zoom

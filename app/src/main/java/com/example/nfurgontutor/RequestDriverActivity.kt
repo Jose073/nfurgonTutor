@@ -90,14 +90,6 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     val mainlayout = findViewById<RelativeLayout>(R.id.main_layout)
 
 
-
-
-
-
-
-
-
-
     override fun onStart() {
         if (!EventBus.getDefault().isRegistered(this))
             EventBus.getDefault().register(this)
@@ -133,6 +125,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun initial() {
+
         iGoogleAPI = RetrofitClient.instance!!.create(IGoogleAPI::class.java)
 
 

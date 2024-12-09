@@ -1,5 +1,4 @@
 package com.example.nfurgontutor.Utils
-
 import android.content.Context
 import android.view.View
 import android.widget.RelativeLayout
@@ -80,7 +79,7 @@ object UserUtils {
                         val fcmSendData = FCMSendData(tokenModel!!.token,notificationData)
 
 
-                        compositeDisponsable.add(ifcmService.senNotification(fcmSendData)!!
+                        compositeDisponsable.add(ifcmService.sendNotification(fcmSendData)!!
                             .subscribeOn(Schedulers.newThread())
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe({ fcmResponse ->

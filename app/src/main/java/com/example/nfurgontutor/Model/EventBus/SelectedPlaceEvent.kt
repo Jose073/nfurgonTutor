@@ -17,5 +17,4 @@ class SelectedPlaceEvent(var origin:LatLng,var destination:LatLng) {
         .append(",")
         .append(destination.longitude)
         .toString()
-
 }
