@@ -89,7 +89,7 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx:21.0.0")
 
     //karumi
-    implementation("com.karumi:dexter:6.2.3")
+    implementation("com.karumi:dexter:6.1.2")
     implementation("com.google.android.material:material:1.8.0")
 
     //location
@@ -107,7 +107,6 @@ dependencies {
 
     //Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging:24.0.3")
-
 
     //Geofire
     implementation("com.firebase:geofire-android:3.2.0")

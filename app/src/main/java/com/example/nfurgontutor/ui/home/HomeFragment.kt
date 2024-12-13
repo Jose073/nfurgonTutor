@@ -2,6 +2,7 @@ package com.example.nfurgontutor.ui.home
 
 import android.Manifest
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Address
@@ -15,6 +16,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
+import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
@@ -116,13 +119,19 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     lateinit var iFirebaseDriverInfoListener: FirebaseDriverInfoListener
     lateinit var iFirebaseFailedListener: FirebaseFailedListener
 
+
+    //Agregarle OTRA VARIABLE-KEY PARA QUE LEA AL CONDUCTOR
     var cityName = ""
+    var uid ="r6AAzHEw2lNajIzBHDjK0TYgfSC2"
+
+    //Parral/r6AAzHEw2lNajIzBHDjK0TYgfSC2
 
 
     val compositeDisposable = CompositeDisposable()
     lateinit var iGoogleAPI: IGoogleAPI
 
-
+    //button school
+    //val btnconfirm = findViewById<Button>(R.id.btn_confirm)
 
     override fun onStop() {
         compositeDisposable.clear()
@@ -144,12 +153,15 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        init()
-        initViews(root)
-
         mapFragment = childFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+
+        initViews(root)
+        init()
+
+
         return root
     }
 
@@ -184,24 +196,19 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     }
 
     private fun init() {
+//auqui habra que añadir el boton hacia el cole
 
         Places.initialize(requireContext(),getString(R.string.google_api_key))
-
-        //exDireccionar rutas
         autocompleteSupportFragment = childFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
         autocompleteSupportFragment.setPlaceFields(
             listOf(Place.Field.ID,
             Place.Field.ADDRESS,
             Place.Field.LAT_LNG,
-            Place.Field.NAME
-            )
-        )
+            Place.Field.NAME))
+        val schoolLatLng = LatLng(-36.212374, -71.603723) // cords colegio camelias
         autocompleteSupportFragment.setOnPlaceSelectedListener(object : PlaceSelectionListener {
             override fun onPlaceSelected(place: Place) {
-                if (!hasLocationPermission()) {
-                    Snackbar.make(requireView(), getString(R.string.permission_require), Snackbar.LENGTH_LONG).show()
-                    return
-                }
+
                 if (ActivityCompat.checkSelfPermission(
                         requireContext(),
                         Manifest.permission.ACCESS_FINE_LOCATION
@@ -212,13 +219,37 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 ) {
                     return
                 }
-                fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+
+                val btnGoToSchool: Button = requireView().findViewById(R.id.btn_go_to_school)
+                btnGoToSchool.setOnClickListener {
+                    fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+                        if (location != null) {
+                            val origin = LatLng(location.latitude, location.longitude)
+
+                            // Inicia actividad o proceso para dirigirse al colegio
+                            startActivity(Intent(requireContext(), RequestDriverActivity::class.java))
+                            EventBus.getDefault().postSticky(SelectedPlaceEvent(origin, schoolLatLng))
+                        } else {
+                            Snackbar.make(requireView(), "No se pudo obtener la ubicación actual", Snackbar.LENGTH_LONG).show()
+                        }
+                    }.addOnFailureListener {
+                        Snackbar.make(requireView(), "Error al obtener la ubicación: ${it.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+
+                //VER EL COLEGIO A DIRIGIRSE
+                /*fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+
                     val origin = LatLng(location.latitude, location.longitude)
                     val destination = LatLng(place.latLng!!.latitude, place.latLng!!.longitude)
 
                     startActivity(Intent(requireContext(), RequestDriverActivity::class.java))
                     EventBus.getDefault().postSticky(SelectedPlaceEvent(origin, destination))
-                }
+                }*/
+
+
+
+
             }
             override fun onError(status: Status) {
                 Snackbar.make(requireView(), status.statusMessage ?: "Error desconocido", Snackbar.LENGTH_LONG).show()
@@ -238,7 +269,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
             setMinUpdateDistanceMeters(5f)  // Desplazamiento mínimo entre actualizaciones
         }.build()
 
-        // Callback de la ubicación Tutor?
+        // Callback de ubicación
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 super.onLocationResult(locationResult)
@@ -249,22 +280,16 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 )
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newPos, 18f))
 
-                if (firstTime)
-                {
-                    previousLocation  = locationResult.lastLocation
+                if (firstTime) {
+                    previousLocation = locationResult.lastLocation
                     currentLocation = locationResult.lastLocation
 
                     setRestrictPlacesInCountry(locationResult.lastLocation)
-
                     firstTime = false
-
-                }
-                else
-                {
+                } else {
                     previousLocation = currentLocation
                     currentLocation = locationResult.lastLocation
                 }
-                //se le agrego !!
                 if (previousLocation != null && currentLocation != null) {
                     if (previousLocation!!.distanceTo(currentLocation!!) / 1000 <= LIMIT_RANGE) {
                         loadDriver()
@@ -280,6 +305,121 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
             fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper())
         } else {
             requestLocationPermission()
+        }
+
+        loadDriver()
+    }
+
+    private fun goToFixedLocation() {
+        // Coordenadas fijas del colegio
+        val schoolLatLng = LatLng(-36.212374, -71.603723) // cords colegio camelias
+
+        // Obtener la ubicación actual del usuario
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Snackbar.make(requireView(), "Permisos de ubicación no concedidos", Snackbar.LENGTH_LONG).show()
+            return
+        }
+
+        fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val origin = LatLng(location.latitude, location.longitude)
+
+                // Inicia actividad o proceso para dirigirse al colegio
+                startActivity(Intent(requireContext(), RequestDriverActivity::class.java))
+                EventBus.getDefault().postSticky(SelectedPlaceEvent(origin, schoolLatLng))
+            } else {
+                Snackbar.make(requireView(), "No se pudo obtener la ubicación actual", Snackbar.LENGTH_LONG).show()
+            }
+        }.addOnFailureListener {
+            Snackbar.make(requireView(), "Error al obtener la ubicación: ${it.message}", Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    private fun updateLocation() {
+        if (fusedLocationProviderClient == null)
+        {
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ){
+                return
+            }
+            fusedLocationProviderClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.myLooper()
+            )
+        }
+    }
+
+    private fun buildLocationCallback() {
+        if (locationCallback == null)
+        {
+            locationCallback = object : LocationCallback() {
+
+                override fun onLocationResult(locationResult: LocationResult) {
+                    super.onLocationResult(locationResult)
+
+                    val newPos = LatLng(
+                        locationResult.lastLocation!!.latitude, locationResult.lastLocation!!.longitude)
+
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newPos, 18f))
+
+                    if (firstTime)
+                    {
+                        previousLocation  = locationResult.lastLocation
+                        currentLocation = locationResult.lastLocation
+
+                        setRestrictPlacesInCountry(locationResult.lastLocation)
+
+                        firstTime = false
+
+                    }
+                    else
+                    {
+                        previousLocation = currentLocation
+                        currentLocation = locationResult.lastLocation
+                    }
+                    //se le agrego !!
+                    if (previousLocation != null && currentLocation != null) {
+                        if (previousLocation!!.distanceTo(currentLocation!!) / 1000 <= LIMIT_RANGE) {
+                            loadDriver()
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    private fun buildLocationRequest() {
+        if(locationRequest==null)
+        {
+            /*locationRequest = LocationRequest()
+            locationRequest!!.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+            locationRequest!!.setFastestInterval(3000)
+            locationRequest!!.setSmallestDisplacement(10f)
+            locationRequest!!.interval = 5000*/
+            locationRequest = LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, // Establece la prioridad de ubicación
+                3000 // Intervalo en milisegundos
+            ).apply {
+                setWaitForAccurateLocation(true) // Esperar una ubicación más precisa si es posible
+                setMinUpdateIntervalMillis(1000) // Intervalo mínimo de actualización
+                setMinUpdateDistanceMeters(5f)  // Desplazamiento mínimo entre actualizaciones
+            }.build()
         }
     }
 
@@ -310,12 +450,14 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         }
     }
 
+    @SuppressLint("SuspiciousIndentation")
     private fun setRestrictPlacesInCountry(location: Location?) {
         try {
             val geoCoder = Geocoder(requireContext(), Locale.getDefault())
-            var addressList = geoCoder.getFromLocation(location!!.latitude,location.longitude,1)!!
-            if(addressList.size > 0)
+            var addressList = geoCoder.getFromLocation(location!!.latitude, location.longitude,1)
+            if(addressList!!.size > 0)
                 autocompleteSupportFragment.setCountry(addressList[0].countryCode)
+                Log.d("LOAD_DRIVER", "Ciudad actual: $cityName")
         }catch (e:IOException){
             e.printStackTrace()
         }
@@ -338,10 +480,21 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 Snackbar.make(requireView(),e.message!!,Snackbar.LENGTH_SHORT).show()
             }
             .addOnSuccessListener { location ->
-
                 //load driver
                 val geoCoder = Geocoder(requireContext(), Locale.getDefault())
                 var addressList : List<Address> = ArrayList()
+                FirebaseDatabase.getInstance()
+                    .getReference("DriversLOCATION")
+                    .child(cityName)
+                    .child(uid)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        Log.d("TEST_FIREBASE", "Datos obtenidos: ${snapshot.value}")
+                    }
+                    .addOnFailureListener { error ->
+                        Log.e("TEST_FIREBASE", "Error loadDriver: ${error.message}")
+                        Log.d("TEST_FIREBASE", "Ciudad obtenida: $cityName")
+                    }
                 try {
                     addressList = geoCoder.getFromLocation(location.latitude,location.longitude,1)!!
                     if (addressList.size > 0)
@@ -364,14 +517,15 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                         }
 
                         override fun onKeyExited(key: String?) {
-
+                            Log.d("LOAD_DRIVER", "Conductor salió del rango: $key")
                         }
 
                         override fun onKeyMoved(key: String?, location: GeoLocation?) {
-
+                            Log.d("LOAD_DRIVER", "Conductor movido: $key a $location")
                         }
 
                         override fun onGeoQueryReady() {
+                            Log.d("LOAD_DRIVER", "Conductores encontrados: ${Common.driverFound.size}")
                             if (distance <= LIMIT_RANGE)
                             {
                                 distance++
@@ -385,7 +539,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
 
                         override fun onGeoQueryError(error: DatabaseError?) {
                             Snackbar.make(requireView(),error!!.message!!,Snackbar.LENGTH_SHORT).show()
-                            Log.d("CITY_NAME", "City name: $cityName")
+                            Log.e("LOAD_DRIVER", "Error al cargar conductores: ${error.message}")
                         }
 
                     })
@@ -429,6 +583,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 }
 
             }
+
+
     }
 
     private fun addDriverMarker() {
@@ -452,17 +608,20 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         }
     }
 
+
+    //VVER QUE PASA CON LA KEY DEL CONDUCTOR
     private fun findDriverByKey(driverGeomodel: DriverGeoModel?) {
         FirebaseDatabase.getInstance()
             .getReference(Common.DRIVER_INFO_REFERECE)
             .child(driverGeomodel!!.key!!)
             .addListenerForSingleValueEvent(object :ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.hasChildren())
+                override fun onDataChange(p0: DataSnapshot) {
+                    if (p0.hasChildren())
                     {
-                        driverGeomodel.driverInfoModel = (snapshot.getValue(DriverInfoModel::class.java))
-                        Common.driverFound[driverGeomodel.key!!]!!.driverInfoModel= (snapshot.getValue(DriverInfoModel::class.java))
+                        driverGeomodel.driverInfoModel = (p0.getValue(DriverInfoModel::class.java))
+                        Common.driverFound[driverGeomodel.key!!]!!.driverInfoModel= (p0.getValue(DriverInfoModel::class.java))
                         iFirebaseDriverInfoListener.onDriverInfoLoadSuccess(driverGeomodel)
+                        Log.d("FIND_DRIVER", "ID CONDUCTOR: ${driverGeomodel.key}")
                     }
                     else
                         iFirebaseFailedListener.onFirebaseFailed(getString(R.string.key_not_found)+driverGeomodel.key)
@@ -483,8 +642,10 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     override fun onMapReady(p0: GoogleMap) {
         mMap = p0!!
 
-        Dexter.withContext(requireContext())
-            .withPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        /*Dexter.withContext(requireContext())
+            .withPermissions(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION)
             .withListener(object : PermissionListener, MultiplePermissionsListener {
                 override fun onPermissionGranted(p0: PermissionGrantedResponse?) {
 
@@ -517,6 +678,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                             }
                         true
                     }
+
                     //layout button location
                     val locationButton = (mapFragment.requireView()
                         .findViewById<View>("1".toInt())
@@ -552,22 +714,76 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                     //implementar logica
                 }
             })
-            .check() //aquii!!
+            .check() *///aquii!!
 
-        val schoolLocation = LatLng(-36.21175,-71.60404)
-        val schoolName = "Milan"
+        Dexter.withContext(requireContext())
+            .withPermissions(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            .withListener(object : MultiplePermissionsListener {
+                override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+                    if (report != null && report.areAllPermissionsGranted()) {
+                        mMap.isMyLocationEnabled = true
+                        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
-        mMap.addMarker(
-            MarkerOptions()
-                .position(schoolLocation)
-                .title(schoolName)
-        )
+                        mMap.setOnMyLocationButtonClickListener {
+                            if (ActivityCompat.checkSelfPermission(
+                                    requireContext(),
+                                    Manifest.permission.ACCESS_FINE_LOCATION
+                                ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                                    requireContext(),
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+
+                            }
+                            fusedLocationProviderClient.lastLocation
+                                .addOnSuccessListener { location ->
+                                    if (location != null) {
+                                        val userLatLng = LatLng(location.latitude, location.longitude)
+                                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 18f))
+                                    } else {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "No location found. Turn on location services.",
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            true
+                        }
+
+                        // Ajustar la posición del botón de ubicación
+                        val locationButton = (mapFragment.requireView()
+                            .findViewById<View>("1".toInt())
+                            .parent as View).findViewById<View>("2".toInt())
+                        val params = locationButton.layoutParams as RelativeLayout.LayoutParams
+                        params.addRule(RelativeLayout.ALIGN_PARENT_TOP, 0)
+                        params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE)
+                        params.bottomMargin = 250
+                        locationButton.layoutParams = params
+                    } else {
+                        Snackbar.make(
+                            requireView(),
+                            "Permissions are required to run the app",
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                override fun onPermissionRationaleShouldBeShown(
+                    permissions: MutableList<PermissionRequest>?,
+                    token: PermissionToken?
+                ) {
+                    token?.continuePermissionRequest()
+                }
+            }).check()
+
 
 
         //Enable zoom
         mMap.uiSettings.isZoomControlsEnabled = true
-        mMap.isMyLocationEnabled = true
-        mMap.uiSettings.isMyLocationButtonEnabled = true
 
         try {
             val success = p0!!.setMapStyle(MapStyleOptions.loadRawResourceStyle(requireContext(),R.raw.maps_style))
@@ -584,13 +800,16 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     override fun onDriverInfoLoadSuccess(driverGeoModel: DriverGeoModel?) {
         if (driverGeoModel != null) {
             if(!Common.markerList.containsKey(driverGeoModel.key))
-                Common.markerList.put(driverGeoModel!!.key!!,
-                    mMap.addMarker(MarkerOptions()
-                        .position(LatLng(driverGeoModel!!.geoLocation!!.latitude,driverGeoModel!!.geoLocation!!.longitude))
-                        .flat(true)
-                        .title(Common.buildName(driverGeoModel.driverInfoModel!!.firstName,driverGeoModel.driverInfoModel!!.lastName))
-                        .snippet(driverGeoModel.driverInfoModel!!.phoneNumber)
-                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_escolar2)))!!)//!!
+                mMap.addMarker(MarkerOptions()
+                    .position(LatLng(driverGeoModel!!.geoLocation!!.latitude,driverGeoModel!!.geoLocation!!.longitude))
+                    .flat(true)
+                    .title(Common.buildName(driverGeoModel.driverInfoModel!!.primer_nombre,driverGeoModel.driverInfoModel!!.apellido))
+                    .snippet(driverGeoModel.driverInfoModel!!.numerocelular)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_escolar2)))?.let {
+                    Common.markerList.put(driverGeoModel!!.key!!,
+                        it
+                    )
+                }//!!
         }
 
         if (!TextUtils.isEmpty(cityName))

@@ -17,4 +17,13 @@ class SelectedPlaceEvent(var origin:LatLng,var destination:LatLng) {
         .append(",")
         .append(destination.longitude)
         .toString()
+
+    companion object {
+        // Coordenadas de un lugar fijo (ejemplo: Colegio Santiago)
+        val SCHOOL_LOCATION = LatLng(-33.4489, -70.6693)
+
+        fun createFromSchoolToDestination(destination: LatLng): SelectedPlaceEvent {
+            return SelectedPlaceEvent(SCHOOL_LOCATION, destination)
+        }
+    }
 }
