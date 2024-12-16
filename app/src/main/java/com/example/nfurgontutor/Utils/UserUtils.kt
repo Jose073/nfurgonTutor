@@ -5,6 +5,7 @@ import android.widget.RelativeLayout
 import android.widget.Toast
 import com.example.nfurgontutor.Common.Common
 import com.example.nfurgontutor.Model.DriverGeoModel
+import com.example.nfurgontutor.Model.EventBus.SelectedPlaceEvent
 import com.example.nfurgontutor.Model.FCMSendData
 import com.example.nfurgontutor.Model.TokenModel
 import com.example.nfurgontutor.R
@@ -53,7 +54,7 @@ object UserUtils {
         Context: Context,
         mainlayout: RelativeLayout?,
         foundDriver: DriverGeoModel?,
-        target: LatLng
+        selectedPlaceEvent: SelectedPlaceEvent
     ) {
         val compositeDisponsable = CompositeDisposable()
         val ifcmService = RetrofitFCMClient.instance!!.create(IFCMService::class.java)
@@ -70,10 +71,20 @@ object UserUtils {
                         val notificationData:MutableMap<String,String> = HashMap()
                         notificationData.put(Common.NOTI_TITLE,Common.REQUEST_DRIVER_TITLE)
                         notificationData.put(Common.NOTI_BODY,"Este mensaje representa una solicitud del conductor")
+                        notificationData.put(Common.RIDER_KEY,FirebaseAuth.getInstance().currentUser!!.uid)
+
+                        notificationData.put(Common.PICKUP_LOCATION_STRING,selectedPlaceEvent.originString)
                         notificationData.put(Common.PICKUP_LOCATION,StringBuilder()
-                            .append(target.latitude)
+                            .append(selectedPlaceEvent.origin.latitude)
                             .append(",")
-                            .append(target.longitude)
+                            .append(selectedPlaceEvent.origin.longitude)
+                            .toString())
+
+                        notificationData.put(Common.DESTINATION_LOCATION_STRING,selectedPlaceEvent.destinationString)
+                        notificationData.put(Common.DESTINATION_LOCATION,StringBuilder()
+                            .append(selectedPlaceEvent.destination.latitude)
+                            .append(",")
+                            .append(selectedPlaceEvent.destination.longitude)
                             .toString())
 
                         val fcmSendData = FCMSendData(tokenModel!!.token,notificationData)

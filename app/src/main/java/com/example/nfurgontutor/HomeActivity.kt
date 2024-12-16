@@ -93,6 +93,7 @@ class HomeActivity : AppCompatActivity() {
                         finish()
 
                     }.setCancelable(false)
+
                 val dialog = builder.create()
                 dialog.setOnShowListener{
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -108,12 +109,12 @@ class HomeActivity : AppCompatActivity() {
         val headerView = navView.getHeaderView(0)
         val txt_name = headerView.findViewById<View>(R.id.txt_name) as TextView
         val txt_phone = headerView.findViewById<View>(R.id.txt_phone) as TextView
-        
         img_avatar = headerView.findViewById<View>(R.id.img_avatar) as ImageView
         txt_name.setText(Common.buildWelcomeMessage())
-        txt_phone.setText(Common.currentTutor!!.phoneNumber)
+        txt_phone.setText(Common.currentTutor?.phoneNumber)
 
-        if (Common.currentTutor != null && Common.currentTutor!!.avatar != null && !TextUtils.isEmpty(Common.currentTutor!!.avatar))
+        if (Common.currentTutor != null && Common.currentTutor!!.avatar != null && !TextUtils.isEmpty(
+                Common.currentTutor!!.avatar))
         {
             Glide.with(this)
                 .load(Common.currentTutor!!.avatar)

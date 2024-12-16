@@ -31,4 +31,11 @@
     <string name="finding_your_ride">Buscando el conductor</string>
     <string name="token_not_found">Token not found</string>
     <string name="send_request_driver_failed">Request driver failed</string>
+    <string name="no_drive_accept">no aceptaron llevar</string>
+    <string name="trip_not_found">viaje no encontrado\n</string>
+    <string name="address">colegio</string>
+    <string name="furgon_x">nissan</string>
+    <string name="car_number_ex">ABC 123</string>
+    <string name="driver_name_example">miguel solis</string>
+    <string name="ascii_dot">■</string>
 </resources>

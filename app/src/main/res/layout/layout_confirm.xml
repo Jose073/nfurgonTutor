@@ -12,6 +12,18 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/address"
+            android:textColor="#737373"
+            android:textSize="16sp"/>
+
+
+
+
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,34 +43,6 @@
             android:background="@color/colorAccent"
             android:text="@string/Confirm"
             android:textColor="@color/white"/>
-
-
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:foreground="?attr/selectableItemBackground"
-        android:orientation="horizontal"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingTop="8dp"
-        android:paddingRight="@dimen/activity_horizontal_margin"
-        android:paddingBottom="8dp">
-
-        <Button
-            android:id="@+id/btn_refuse"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/colorAccent"
-            android:text="@string/Refuse"
-            android:textColor="@color/white"/>
-
-
-
-
-
-
 
     </LinearLayout>
     </LinearLayout>

@@ -8,9 +8,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
+import android.view.LayoutInflater
+import android.view.View
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.example.nfurgontutor.Model.AnimationModel
@@ -19,12 +23,22 @@ import com.example.nfurgontutor.Model.TutoModel
 import com.example.nfurgontutor.R
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
+import com.google.maps.android.ui.IconGenerator
 import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.atan
 
 
 object Common {
+
+    val DESTINATION_LOCATION: String="DestinationLocation"
+    val DESTINATION_LOCATION_STRING: String="DestinationLocationString"
+    val PICKUP_LOCATION_STRING: String="PickupLocationString"
+    val RIDER_KEY: String="RiderKey"
+    val TRIP: String="Trips"
+    val TRIP_KEY:String="TtripKey"
+    val REQUEST_DRIVER_ACCEPT:String="Accept"
+    val REQUEST_DRIVER_DECLINE: String?="Decline"
     val PICKUP_LOCATION: String="PickupLocation"
     val REQUEST_DRIVER_TITLE: String="RequestDriver"
     val driversSubscribe: MutableMap<String, AnimationModel> = HashMap<String,AnimationModel>()
@@ -73,9 +87,9 @@ object Common {
 
     fun buildWelcomeMessage(): String{
         return StringBuilder("Bienvenido")
-            .append(currentTutor!!.firstName)
+            .append(currentTutor?.firstName)
             .append(" ")
-            .append(currentTutor!!.lastName)
+            .append(currentTutor?.lastName)
             .toString()
     }
 
@@ -170,5 +184,20 @@ object Common {
         va.repeatMode = ValueAnimator.RESTART
         va.start()
         return va
+    }
+
+    fun creaateIconWithDuration(context: Context, duration: String): Bitmap? {
+        val view = LayoutInflater.from(context).inflate(R.layout.pickup_info_with_duration_window,null)
+        val txt_time = view.findViewById<View>(R.id.txt_duration) as TextView
+        txt_time.setText(getNumberFromText(duration!!))
+        val generator=IconGenerator(context)
+        generator.setContentView(view)
+        generator.setBackground(ColorDrawable(Color.TRANSPARENT))
+        return generator.makeIcon()
+        
+    }
+
+    private fun getNumberFromText(s: String): String {
+        return s.substring(0,s.indexOf(""))
     }
 }

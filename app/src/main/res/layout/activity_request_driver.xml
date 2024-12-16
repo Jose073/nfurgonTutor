@@ -14,7 +14,7 @@
         android:layout_height="match_parent">
 
         <fragment
-            android:id="@+id/map"
+            android:id="@+id/map2"
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -39,12 +39,8 @@
 
         <include layout="@layout/layout_finding_your_driver"/>
 
+        <include layout="@layout/layout_driver_info"/>
+
     </FrameLayout>
-
-
-
-
-
-
 
 </RelativeLayout>
