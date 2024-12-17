@@ -269,6 +269,13 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
 
         })
 
+        // Inicializar iFirebaseFailedListener
+        iFirebaseFailedListener = object : FirebaseFailedListener {
+            override fun onFirebaseFailed(message: String) {
+                Log.e("FIREBASE_ERROR", message)
+                Snackbar.make(requireView(), "Error: $message", Snackbar.LENGTH_LONG).show()
+            }
+        }
 
         iGoogleAPI = RetrofitClient.instance!!.create(IGoogleAPI::class.java)
         iFirebaseDriverInfoListener = this
@@ -428,14 +435,14 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
             }
             .addOnSuccessListener { location ->
                 //load driver
+
                 val geoCoder = Geocoder(requireContext(), Locale.getDefault())
                 var addressList : List<Address>?
 
                 try {
+
                     addressList = geoCoder.getFromLocation(location.latitude,location.longitude,1)!!
                     cityName = addressList[0].locality
-
-
 
                     //query
                     if (!TextUtils.isEmpty(cityName)){
@@ -484,42 +491,20 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                     driver_location_ref.addChildEventListener(object: ChildEventListener{
 
                         override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                            try {
-                                // Intenta mapear el nodo a GeoQueryModel
-                                val geoQueryModel = snapshot.getValue(GeoQueryModel::class.java)
 
-                                if (geoQueryModel?.l != null && geoQueryModel.l!!.size == 2) {
-                                    val geoLocation = GeoLocation(geoQueryModel.l!![0], geoQueryModel.l!![1])
-                                    val driverGeoModel = DriverGeoModel(snapshot.key, geoLocation)
-
-                                    val newDriverLocation = Location("").apply {
-                                        latitude = geoLocation.latitude
-                                        longitude = geoLocation.longitude
-                                    }
-
-                                    val newDistance = location.distanceTo(newDriverLocation) / 1000 // en km
-                                    if (newDistance <= LIMIT_RANGE) {
-                                        findDriverByKey(driverGeoModel)
-                                    }
-                                } else {
-                                    Log.e("LOAD_DRIVER", "Nodo incompleto encontrado: ${snapshot.key} -> ${snapshot.value}")
-                                }
-                            } catch (e: Exception) {
-                                Log.e("LOAD_DRIVER", "Error al procesar nodo: ${snapshot.key} -> ${e.message}")
-                            }
+                            val geoQueryModel = snapshot.getValue(GeoQueryModel::class.java)
+                            val geoLocation = GeoLocation(geoQueryModel!!.l!![0],geoQueryModel!!.l!![1])
+                            val driverGeoModel = DriverGeoModel(snapshot.key,geoLocation)
+                            val newDriverlocation = Location("")
+                            newDriverlocation.latitude = geoLocation.latitude
+                            newDriverlocation.longitude = geoLocation.longitude
+                            val newDistance = location.distanceTo(newDriverlocation)/10 //in km
+                            if (newDistance <= LIMIT_RANGE)
+                                findDriverByKey(driverGeoModel)
                         }
 
 
                         override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                            for (childSnapshot in snapshot.children) {
-                                val geoQueryModel = childSnapshot.getValue(GeoQueryModel::class.java)
-                                if (geoQueryModel != null && geoQueryModel.l != null) {
-                                    val geoLocation = GeoLocation(geoQueryModel.l!![0], geoQueryModel.l!![1])
-                                    Log.d("LOAD_DRIVER", "Conductor encontrado: ${geoLocation.latitude}, ${geoLocation.longitude}")
-                                } else {
-                                    Log.e("LOAD_DRIVER", "Nodo mal formateado: ${childSnapshot.key}")
-                                }
-                            }
 
                         }
 
