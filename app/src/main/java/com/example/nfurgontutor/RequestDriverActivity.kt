@@ -148,8 +148,8 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     {
 
         driverInfoLayout=findViewById(R.id.driver_info_layout)
-        img_Driver = findViewById<ImageView>(R.id.img_driver)
-        txtDriverName=findViewById<TextView>(R.id.txt_driver_name)
+        img_Driver = findViewById(R.id.img_driver)
+        txtDriverName=findViewById(R.id.txt_driver_name)
         FirebaseDatabase.getInstance().getReference(Common.TRIP)
             .child(event.tripId)
             .addListenerForSingleValueEvent(object:ValueEventListener{
@@ -446,7 +446,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun addDriverMarker(destination: LatLng) {
         destinationMarker=mMap.addMarker(MarkerOptions().position(destination).flat(true)
-            .icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_escolar2)))
+            .icon(BitmapDescriptorFactory.fromResource(R.drawable.school_icon)))
 
     }
 
@@ -491,9 +491,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun initial() {
 
         btnConfirm = findViewById(R.id.btn_confirm)
-
         mainLayout = findViewById(R.id.main_layout)
-
         iGoogleAPI = RetrofitClient.instance!!.create(IGoogleAPI::class.java)
 
 
@@ -544,7 +542,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
                 {
                     lastUserCircle = mMap.addCircle(CircleOptions()
                         .center(selectedPlaceEvent.origin)
-                        .radius(p0!!.animatedValue.toString().toDouble())
+                        .radius(p0?.animatedValue.toString().toDouble())
                         .strokeColor(android.graphics.Color.WHITE)
                         .fillColor(ContextCompat.getColor(this@RequestDriverActivity,R.color.map_darker)))
                 }
@@ -592,8 +590,8 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
             for (key in Common.driverFound.keys)
             {
                 val driverLocation = Location("")
-                driverLocation.latitude = Common.driverFound[key]!!.geoLocation!!.latitude
-                driverLocation.longitude = Common.driverFound[key]!!.geoLocation!!.longitude
+                driverLocation.latitude = Common.driverFound[key]?.geoLocation!!.latitude
+                driverLocation.longitude = Common.driverFound[key]?.geoLocation!!.longitude
 
                 if (min == 0f)
                 {

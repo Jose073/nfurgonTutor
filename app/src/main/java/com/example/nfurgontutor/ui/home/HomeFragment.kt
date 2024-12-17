@@ -33,6 +33,7 @@ import com.example.nfurgontutor.Model.EventBus.SelectedPlaceEvent
 import com.example.nfurgontutor.Model.GeoQueryModel
 import com.example.nfurgontutor.R
 import com.example.nfurgontutor.Remote.IGoogleAPI
+import com.example.nfurgontutor.Remote.OSRMApi
 import com.example.nfurgontutor.Remote.RetrofitClient
 import com.example.nfurgontutor.RequestDriverActivity
 //import com.example.nfurgontutor.databinding.ActivityMapsBinding
@@ -82,6 +83,9 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.greenrobot.eventbus.EventBus
 import org.json.JSONObject
+import retrofit2.Retrofit
+import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.Arrays
 import java.util.Locale
@@ -109,8 +113,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     var locationCallback: LocationCallback?=null
     var fusedLocationProviderClient: FusedLocationProviderClient?=null
 
-    var distance = 1.0
-    val LIMIT_RANGE = 10.0
+    var distance = 5.0
+    val LIMIT_RANGE = 1.0
     var previousLocation : Location? = null
     var currentLocation : Location? = null
 
@@ -123,13 +127,9 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
     var cityName = ""
 
 
-    //Parral/r6AAzHEw2lNajIzBHDjK0TYgfSC2
-
-
     val compositeDisposable = CompositeDisposable()
     lateinit var iGoogleAPI: IGoogleAPI
-
-
+    lateinit var osrmApi:OSRMApi
 
     override fun onStop() {
         compositeDisposable.clear()
@@ -146,6 +146,10 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
+
+        osrmApi = RetrofitClient.retrofitOSRM.create(OSRMApi::class.java)
+
         homeViewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
 
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -179,13 +183,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         // Coordenadas del lugar fijo
         val fixedLatLng = LatLng(-36.212374, -71.603723) // Coordenadas del colegio Camelias
 
-        // Crear y agregar un marcador en el mapa
-        mMap.addMarker(
-            MarkerOptions()
-                .position(fixedLatLng)
-                .title("Lugar fijo: Colegio Camelias")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)) // Marcador azul
-        )
+
+
         if (ActivityCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -498,9 +497,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                             val newDriverlocation = Location("")
                             newDriverlocation.latitude = geoLocation.latitude
                             newDriverlocation.longitude = geoLocation.longitude
-                            val newDistance = location.distanceTo(newDriverlocation)/10 //in km
+                            val newDistance = location.distanceTo(newDriverlocation)/1000 //in km
                             if (newDistance <= LIMIT_RANGE)
                                 findDriverByKey(driverGeoModel)
+
+                            Log.d("LOAD_DRIVER", "Lugar del conductor: ${snapshot.value}")
                         }
 
 
@@ -752,7 +753,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                     .flat(true)
                     .title(Common.buildName(driverGeoModel.driverInfoModel!!.primer_nombre,driverGeoModel.driverInfoModel!!.apellido))
                     .snippet(driverGeoModel.driverInfoModel!!.numerocelular)
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_escolar2)))?.let {
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.school_icon)))?.let {
                     Common.markerList.put(driverGeoModel!!.key!!,
                         it
                     )
@@ -822,6 +823,9 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
         }
     }
 
+
+
+
     private fun moveMarkerAnimation(
         key: String,
         newData: AnimationModel,
@@ -836,73 +840,74 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener 
                 "less_driving",
                 from,to,
                 getString(R.string.google_api_key))
-                    !!.subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe { returnResult ->
-                        Log.d("API_RETURN", returnResult)
-                        try {
-                            val jsonObject = JSONObject(returnResult)
-                            val jsonArray = jsonObject.getJSONArray("routes");
-                            for (i in 0 until jsonArray.length())
-                            {
-                                val route = jsonArray.getJSONObject(i)
-                                val poly = route.getJSONObject("overview_polyline")
-                                val polyline = poly.getString("points")
-                                //polylineList = Common.decodePoly(polyline)
-                                newData.polylineList = Common.decodePoly(polyline)
+            !!.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { returnResult ->
+                    Log.d("API_RETURN", returnResult)
+                    try {
+                        val jsonObject = JSONObject(returnResult)
+                        val jsonArray = jsonObject.getJSONArray("routes");
+                        for (i in 0 until jsonArray.length())
+                        {
+                            val route = jsonArray.getJSONObject(i)
+                            val poly = route.getJSONObject("overview_polyline")
+                            val polyline = poly.getString("points")
+                            //polylineList = Common.decodePoly(polyline)
+                            newData.polylineList = Common.decodePoly(polyline)
 
-                            }
+                        }
 
-                            //Moving
-                            newData.index = -1
-                            newData.next = 1
+                        //Moving
+                        newData.index = -1
+                        newData.next = 1
 
-                            val runnable = object:Runnable{
-                                override fun run(){
-                                    if(newData.polylineList != null && newData.polylineList!!.size > 1)
+                        val runnable = object:Runnable{
+                            override fun run(){
+                                if(newData.polylineList != null && newData.polylineList!!.size > 1)
+                                {
+                                    if(newData.index > newData.polylineList!!.size -2)
                                     {
-                                       if(newData.index > newData.polylineList!!.size -2)
-                                       {
-                                           newData.index++
-                                           newData.next = newData.index+1
-                                           newData.start = newData.polylineList!![newData.index]!!
-                                           newData.end = newData.polylineList!![newData.next]!!
-                                       }
-                                        val valueAnimator = ValueAnimator.ofInt(0,1)
-                                        valueAnimator.duration = 3000
-                                        valueAnimator.interpolator = LinearInterpolator()
-                                        valueAnimator.addUpdateListener { value ->
-                                            newData.v = value.animatedFraction
-                                            newData.lat = newData.v*newData.end!!.latitude + (1-newData.v)*newData.start!!.latitude
-                                            newData.lng = newData.v*newData.end!!.longitude + (1-newData.v)*newData.start!!.longitude
-                                            val newPos = LatLng(newData.lat,newData.lng)
-                                            marker!!.position = newPos
-                                            marker!!.setAnchor(0.5f,0.5f)
-                                            marker!!.rotation = Common.getBearing(newData.start!!,newPos)
-                                        }
-                                        valueAnimator.start()
-                                        if (newData.index < newData.polylineList!!.size -2)
-                                            newData.handler!!.postDelayed(this,1500)
-                                        else if (newData.index < newData.polylineList!!.size - 1)
-                                        {
-                                            newData.isRun = false
-                                            Common.driversSubscribe.put(key,newData) //update
-                                        }
+                                        newData.index++
+                                        newData.next = newData.index+1
+                                        newData.start = newData.polylineList!![newData.index]!!
+                                        newData.end = newData.polylineList!![newData.next]!!
+                                    }
+                                    val valueAnimator = ValueAnimator.ofInt(0,1)
+                                    valueAnimator.duration = 3000
+                                    valueAnimator.interpolator = LinearInterpolator()
+                                    valueAnimator.addUpdateListener { value ->
+                                        newData.v = value.animatedFraction
+                                        newData.lat = newData.v*newData.end!!.latitude + (1-newData.v)*newData.start!!.latitude
+                                        newData.lng = newData.v*newData.end!!.longitude + (1-newData.v)*newData.start!!.longitude
+                                        val newPos = LatLng(newData.lat,newData.lng)
+                                        marker!!.position = newPos
+                                        marker!!.setAnchor(0.5f,0.5f)
+                                        marker!!.rotation = Common.getBearing(newData.start!!,newPos)
+                                    }
+                                    valueAnimator.start()
+                                    if (newData.index < newData.polylineList!!.size -2)
+                                        newData.handler!!.postDelayed(this,1500)
+                                    else if (newData.index < newData.polylineList!!.size - 1)
+                                    {
+                                        newData.isRun = false
+                                        Common.driversSubscribe.put(key,newData) //update
                                     }
                                 }
                             }
-
-                            newData.handler!!.postDelayed(runnable,1500)
-
-
-                        }catch (e:java.lang.Exception)
-                        {
-                            Snackbar.make(requireView(),e.message!!,Snackbar.LENGTH_LONG).show()
                         }
+
+                        newData.handler!!.postDelayed(runnable,1500)
+
+
+                    }catch (e:java.lang.Exception)
+                    {
+                        Snackbar.make(requireView(),e.message!!,Snackbar.LENGTH_LONG).show()
                     }
+                }
             )
         }
     }
+
 
 
 }
